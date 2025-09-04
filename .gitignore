@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# YOLO models
+*.pt
+yolo11n.pt
+yolo11s.pt
+yolo11m.pt
+yolo11l.pt
+yolo11x.pt
+
+# Sample video files
+sample_feeds/
+*.webm
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.flv
+*.wmv
+
+# Output files
+output/
+results/
+*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
