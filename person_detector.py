@@ -342,63 +342,105 @@ def main():
         description="Person Detector - Analyze video files for person detection (Enhanced for long videos)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  python person_detector.py -i video.mp4
-  python person_detector.py -i video.mp4 -o results.json
-  python person_detector.py -i video.mp4 --confidence 0.5
-  python person_detector.py -i long_video.mp4 --resume 50000
-  python person_detector.py -i video.mp4 --auto-download
+EXAMPLES:
+  Basic usage:
+    python person_detector.py -i video.mp4
+  
+  Save detailed results:
+    python person_detector.py -i video.mp4 -o results.json
+  
+  Adjust detection sensitivity:
+    python person_detector.py -i video.mp4 --confidence 0.5
+  
+  Resume interrupted processing:
+    python person_detector.py -i long_video.mp4 --resume 50000
+  
+  Auto-download model:
+    python person_detector.py -i video.mp4 --auto-download
+  
+  Force re-download model:
+    python person_detector.py -i video.mp4 --force-download
+  
+  Use different model:
+    python person_detector.py -i video.mp4 --model yolo11s.pt
+  
+  Adjust save interval for long videos:
+    python person_detector.py -i long_video.mp4 --save-interval 500
+
+SUPPORTED VIDEO FORMATS:
+  MP4, AVI, MOV, MKV, WebM, FLV, WMV, and other OpenCV-compatible formats
+
+MODEL OPTIONS:
+  yolo11n.pt (default) - Nano model, fastest processing
+  yolo11s.pt          - Small model, good balance
+  yolo11m.pt          - Medium model, higher accuracy
+  yolo11l.pt          - Large model, best accuracy
+  yolo11x.pt          - Extra large model, highest accuracy
+
+For more information, visit: https://github.com/yourusername/person-detector
         """
     )
     
     parser.add_argument(
         '-i', '--input',
         required=True,
-        help='Input video file path'
+        help='Path to input video file (MP4, AVI, MOV, WebM, etc.)'
     )
     
     parser.add_argument(
         '-o', '--output',
-        help='Output JSON file for detailed results'
+        help='Save detailed results to JSON file (includes timestamps, coordinates, confidence scores)'
     )
     
     parser.add_argument(
         '--confidence',
         type=float,
         default=0.3,
-        help='Detection confidence threshold (default: 0.3)'
+        help='Detection confidence threshold (0.0-1.0). Lower = more detections but more false positives (default: 0.3)'
     )
     
     parser.add_argument(
         '--model',
         default='yolo11n.pt',
-        help='Path to YOLOv11 model file (default: yolo11n.pt)'
+        help='YOLOv11 model to use: yolo11n.pt (fastest), yolo11s.pt, yolo11m.pt, yolo11l.pt, yolo11x.pt (most accurate)'
     )
     
     parser.add_argument(
         '--resume',
         type=int,
-        help='Resume processing from specific frame number'
+        help='Resume processing from specific frame number (useful for interrupted long videos)'
     )
     
     parser.add_argument(
         '--save-interval',
         type=int,
         default=1000,
-        help='Save progress every N frames (default: 1000)'
+        help='Save progress every N frames for long videos (default: 1000, lower = more frequent saves)'
     )
     
     parser.add_argument(
         '--auto-download',
         action='store_true',
-        help='Automatically download model if not found'
+        help='Automatically download model if not found locally (requires internet connection)'
     )
     
     parser.add_argument(
         '--force-download',
         action='store_true',
-        help='Force download model even if it exists'
+        help='Force re-download model even if it already exists (useful for updating models)'
     )
+    
+    # Check if no arguments provided and show help
+    if len(sys.argv) == 1:
+        parser.print_help()
+        print("\n" + "="*60)
+        print("💡 QUICK START")
+        print("="*60)
+        print("To analyze a video file, use:")
+        print("  python person_detector.py -i your_video.mp4")
+        print("\nFor more examples, see the EXAMPLES section above.")
+        print("="*60)
+        sys.exit(0)
     
     args = parser.parse_args()
     
