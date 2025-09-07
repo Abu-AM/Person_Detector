@@ -355,11 +355,10 @@ EXAMPLES:
   Resume interrupted processing:
     python person_detector.py -i long_video.mp4 --resume 50000
   
-  Auto-download model:
-    python person_detector.py -i video.mp4 --auto-download
-  
   Force re-download model:
     python person_detector.py -i video.mp4 --force-download
+  
+  Note: Models are automatically downloaded if not found (no flag needed)
   
   Use different model:
     python person_detector.py -i video.mp4 --model yolo11s.pt
@@ -421,7 +420,7 @@ For more information, visit: https://github.com/yourusername/person-detector
     parser.add_argument(
         '--auto-download',
         action='store_true',
-        help='Automatically download model if not found locally (requires internet connection)'
+        help='Automatically download model if not found locally (DEFAULT BEHAVIOR - this flag is optional)'
     )
     
     parser.add_argument(
@@ -454,7 +453,7 @@ For more information, visit: https://github.com/yourusername/person-detector
     detector = PersonDetector(
         model_path=args.model,
         confidence_threshold=args.confidence,
-        auto_download=args.auto_download
+        auto_download=True  # Always auto-download by default
     )
     
     # Analyze video
