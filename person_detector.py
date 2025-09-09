@@ -149,7 +149,7 @@ def estimate_processing_time(total_frames: int, fps: float, sample_time: float =
 
 
 def analyze_video(video_path: str, detector: PersonDetector, output_json: str = None, 
-                 save_interval: int = 1000, resume_from: int = None) -> List[Dict]:
+                 save_interval: int = 1000, resume_from: int = None, output_video: str = None) -> List[Dict]:
     """
     Analyze video file and detect people with timestamps.
     Enhanced for very long videos with periodic saving and progress tracking.
@@ -160,6 +160,7 @@ def analyze_video(video_path: str, detector: PersonDetector, output_json: str = 
         output_json: Optional path to save detailed results as JSON
         save_interval: How often to save progress (frames)
         resume_from: Frame number to resume from (for interrupted processing)
+        output_video: Optional path to save annotated video with bounding boxes
         
     Returns:
         List of detection events with timestamps
@@ -182,6 +183,15 @@ def analyze_video(video_path: str, detector: PersonDetector, output_json: str = 
     # Estimate processing time
     if duration > 3600:  # More than 1 hour
         print(f"⏱️  Estimated processing time: {estimate_processing_time(total_frames, fps)}")
+    
+    # Setup video writer if output video is requested
+    video_writer = None
+    if output_video:
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        video_writer = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
+        print(f"🎬 Video output enabled: {output_video}")
     
     detections = []
     frame_count = 0
@@ -207,6 +217,30 @@ def analyze_video(video_path: str, detector: PersonDetector, output_json: str = 
         
         # Detect people in current frame
         people = detector.detect_people(frame)
+        
+        # Draw bounding boxes if video output is enabled
+        frame_to_write = frame.copy()
+        if video_writer and people:
+            for person in people:
+                x1, y1, x2, y2 = map(int, person['bbox'])
+                confidence = person['confidence']
+                label = f"Person {confidence:.2f}"
+                
+                # Draw bounding box
+                cv2.rectangle(frame_to_write, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                
+                # Draw label background
+                label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
+                cv2.rectangle(frame_to_write, (x1, y1 - label_size[1] - 10), 
+                             (x1 + label_size[0], y1), (0, 255, 0), -1)
+                
+                # Draw label text
+                cv2.putText(frame_to_write, label, (x1, y1 - 5), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+        
+        # Write frame to video if video writer is enabled
+        if video_writer:
+            video_writer.write(frame_to_write)
         
         if people:
             # Only log if we haven't detected people recently (within 1 second)
@@ -251,6 +285,11 @@ def analyze_video(video_path: str, detector: PersonDetector, output_json: str = 
                 last_save_time = current_time_elapsed
     
     cap.release()
+    
+    # Cleanup video writer
+    if video_writer:
+        video_writer.release()
+        print(f"🎬 Video saved: {output_video}")
     
     # Final save
     if output_json:
@@ -336,6 +375,56 @@ def print_summary(detections: List[Dict], video_path: str):
     print("="*60)
 
 
+def generate_output_filename(input_path: str) -> str:
+    """
+    Generate automatic output filename based on input video filename.
+    
+    Args:
+        input_path: Path to input video file
+        
+    Returns:
+        Generated output filename with incrementing number
+    """
+    # Get the base filename without extension
+    base_name = os.path.splitext(os.path.basename(input_path))[0]
+    
+    # Start with number 1
+    counter = 1
+    output_filename = f"{base_name}_{counter:03d}.json"
+    
+    # Check if file exists and increment counter
+    while os.path.exists(output_filename):
+        counter += 1
+        output_filename = f"{base_name}_{counter:03d}.json"
+    
+    return output_filename
+
+
+def generate_video_output_filename(input_path: str) -> str:
+    """
+    Generate automatic video output filename based on input video filename.
+    
+    Args:
+        input_path: Path to input video file
+        
+    Returns:
+        Generated video output filename with incrementing number
+    """
+    # Get the base filename without extension
+    base_name = os.path.splitext(os.path.basename(input_path))[0]
+    
+    # Start with number 1
+    counter = 1
+    output_filename = f"{base_name}_{counter:03d}_annotated.mp4"
+    
+    # Check if file exists and increment counter
+    while os.path.exists(output_filename):
+        counter += 1
+        output_filename = f"{base_name}_{counter:03d}_annotated.mp4"
+    
+    return output_filename
+
+
 def main():
     """Main function to handle command line interface."""
     parser = argparse.ArgumentParser(
@@ -343,11 +432,18 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 EXAMPLES:
-  Basic usage:
+  Basic usage (auto-generates output file):
     python person_detector.py -i video.mp4
+    # Creates: video_001.json
   
-  Save detailed results:
-    python person_detector.py -i video.mp4 -o results.json
+  Custom output filename:
+    python person_detector.py -i video.mp4 -o my_results.json
+  
+  Save annotated video:
+    python person_detector.py -i video.mp4 --save-video
+  
+  Custom video filename:
+    python person_detector.py -i video.mp4 --save-video annotated.mp4
   
   Adjust detection sensitivity:
     python person_detector.py -i video.mp4 --confidence 0.5
@@ -388,7 +484,7 @@ For more information, visit: https://github.com/yourusername/person-detector
     
     parser.add_argument(
         '-o', '--output',
-        help='Save detailed results to JSON file (includes timestamps, coordinates, confidence scores)'
+        help='Custom output JSON file path (default: auto-generates [video_name]_001.json)'
     )
     
     parser.add_argument(
@@ -429,6 +525,11 @@ For more information, visit: https://github.com/yourusername/person-detector
         help='Force re-download model even if it already exists (useful for updating models)'
     )
     
+    parser.add_argument(
+        '--save-video',
+        help='Save annotated video with bounding boxes (auto-generates filename if not specified)'
+    )
+    
     # Check if no arguments provided and show help
     if len(sys.argv) == 1:
         parser.print_help()
@@ -448,6 +549,21 @@ For more information, visit: https://github.com/yourusername/person-detector
         print(f"✗ Error: Input file '{args.input}' does not exist")
         sys.exit(1)
     
+    # Generate automatic output filename if none provided
+    if args.output is None:
+        args.output = generate_output_filename(args.input)
+        print(f"📄 Output will be saved to: {args.output}")
+    
+    # Generate automatic video output filename if save-video is enabled but no filename provided
+    video_output = None
+    if args.save_video:
+        if args.save_video == "" or args.save_video is True:
+            video_output = generate_video_output_filename(args.input)
+            print(f"🎬 Video output will be saved to: {video_output}")
+        else:
+            video_output = args.save_video
+            print(f"🎬 Video output will be saved to: {video_output}")
+    
     # Initialize detector with auto-download option
     print("🚀 Initializing Person Detector...")
     detector = PersonDetector(
@@ -462,7 +578,8 @@ For more information, visit: https://github.com/yourusername/person-detector
         detector, 
         args.output, 
         args.save_interval,
-        args.resume
+        args.resume,
+        video_output
     )
     
     # Print summary
